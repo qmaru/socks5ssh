@@ -19,7 +19,7 @@ var (
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
 		Short:   "Proxy Over SSH By Socks5/HTTP",
-		Version: "1.0-220415",
+		Version: "1.0-221020",
 		Run: func(cmd *cobra.Command, args []string) {
 			if result, ok := proxy.AddressChecker(sshAddress); ok {
 				tunnel := new(proxy.SSHProxy)

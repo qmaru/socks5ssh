@@ -6,9 +6,13 @@ import (
 	"strings"
 )
 
-func ipCheck(ip string) bool {
-	a := net.ParseIP(ip)
-	return a != nil
+func addrCheck(addr string) bool {
+	ipRes := net.ParseIP(addr)
+	if ipRes == nil {
+		_, err := net.LookupHost(addr)
+		return err == nil
+	}
+	return true
 }
 
 func portCheck(port string) bool {
@@ -24,12 +28,12 @@ func portCheck(port string) bool {
 
 func AddressChecker(address string) (string, bool) {
 	if strings.Contains(address, ":") {
-		ipAndPort := strings.Split(address, ":")
-		ip := ipAndPort[0]
-		port := ipAndPort[1]
+		addrAndPort := strings.Split(address, ":")
+		addr := addrAndPort[0]
+		port := addrAndPort[1]
 
-		if !ipCheck(ip) {
-			return "[Address] IP Error: " + ip, false
+		if !addrCheck(addr) {
+			return "[Address] Addr Error: " + addr, false
 		}
 
 		if !portCheck(port) {
@@ -38,5 +42,5 @@ func AddressChecker(address string) (string, bool) {
 
 		return "", true
 	}
-	return "[Address] Format Error: IP:Port", false
+	return "[Address] Format Error: Addr:Port", false
 }
