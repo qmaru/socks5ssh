@@ -2,7 +2,7 @@
 
 forward ssh using socks5 or http.
 
-## 命令参数
+## Command
 
 ```shell
 Proxy Over SSH By Socks5/HTTP
@@ -20,7 +20,7 @@ Flags:
   -v, --version         version for socks5ssh
 ```
 
-## 使用
+## Usage
 
 ### socks5
 
@@ -37,6 +37,19 @@ socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
 ```shell
 # password
 socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
+
 # key
 socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
+```
+
+## Case
+
+```shell
+# Linux
+socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
+
+export http_proxy="socks5://127.0.0.1:1080"
+export https_proxy="socks5://127.0.0.1:1080"
+
+curl ip.sb
 ```
