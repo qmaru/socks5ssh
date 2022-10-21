@@ -11,12 +11,13 @@ Usage:
   socks5ssh
 
 Flags:
-  -h, --help              help for socks5ssh
-  -l, --local string      Local Socks5/HTTP Listen Address <host>:<port>
-  -p, --password string   Remote SSH Password
-  -r, --remote string     Remote SSH Address <host>:<port>
-  -u, --user string       Remote SSH Username
-  -v, --version           version for socks5ssh
+  -h, --help            help for socks5ssh
+  -k, --key string      Remote SSH Private Key
+  -l, --local string    Local Socks5/HTTP Listen Address <host>:<port>
+  -p, --password        Remote SSH Password
+  -r, --remote string   Remote SSH Address <host>:<port>
+  -u, --user string     Remote SSH Username
+  -v, --version         version for socks5ssh
 ```
 
 ## 使用
@@ -24,11 +25,18 @@ Flags:
 ### socks5
 
 ```shell
-socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p ssh_password
+# password
+socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
+
+# key
+socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
 ```
 
 ### http
 
 ```shell
-socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p ssh_password
+# password
+socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
+# key
+socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
 ```
