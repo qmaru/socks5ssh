@@ -1,46 +1,47 @@
 package proxy
 
 import (
+	"errors"
 	"net"
 	"strconv"
 	"strings"
 )
 
-func addrCheck(addr string) bool {
+func addrCheck(addr string) error {
 	ipRes := net.ParseIP(addr)
 	if ipRes == nil {
 		_, err := net.LookupHost(addr)
-		return err == nil
+		return err
 	}
-	return true
+	return nil
 }
 
-func portCheck(port string) bool {
+func portCheck(port string) error {
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
-		return false
+		return err
 	}
 	if portInt > 0 && portInt < 65536 {
-		return true
+		return nil
 	}
-	return false
+	return errors.New("wrong port range: 1-65535")
 }
 
-func AddressChecker(address string) (string, bool) {
+func AddressChecker(address string) error {
 	if strings.Contains(address, ":") {
 		addrAndPort := strings.Split(address, ":")
 		addr := addrAndPort[0]
 		port := addrAndPort[1]
 
-		if !addrCheck(addr) {
-			return "[Address] Addr Error: " + addr, false
+		err := addrCheck(addr)
+		if err != nil {
+			return err
 		}
-
-		if !portCheck(port) {
-			return "[Address] Port Error (1-65535): " + port, false
+		err = portCheck(port)
+		if err != nil {
+			return err
 		}
-
-		return "", true
+		return nil
 	}
-	return "[Address] Format Error: Addr:Port", false
+	return errors.New("address error: <host>:<port>")
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/armon/go-socks5"
@@ -13,12 +14,34 @@ import (
 
 type SSHProxy struct{}
 
-func (proxy *SSHProxy) sshTunnel(sshAddress, sshUser, sshPassword string) (*ssh.Client, error) {
+// sshTunnel Create a ssh tunnel
+//
+//	sshType: 1=Private key; 2=Password
+func (proxy *SSHProxy) sshTunnel(sshAddress, sshUser, authData string, authType int) (*ssh.Client, error) {
 	sshConf := &ssh.ClientConfig{
+		Timeout:         15 * time.Second,
 		User:            sshUser,
-		Auth:            []ssh.AuthMethod{ssh.Password(sshPassword)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
+
+	if authType == 1 {
+		key, err := os.ReadFile(authData)
+		if err != nil {
+			return nil, err
+		}
+		signer, err := ssh.ParsePrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+		sshConf.Auth = []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		}
+	} else if authType == 2 {
+		sshConf.Auth = []ssh.AuthMethod{
+			ssh.Password(authData),
+		}
+	}
+
 	sshConn, err := ssh.Dial("tcp", sshAddress, sshConf)
 	if err != nil {
 		return nil, err
@@ -26,8 +49,8 @@ func (proxy *SSHProxy) sshTunnel(sshAddress, sshUser, sshPassword string) (*ssh.
 	return sshConn, nil
 }
 
-func (proxy *SSHProxy) Socks5Run(localAddress, sshAddress, sshUser, sshPassword string) error {
-	sshConn, err := proxy.sshTunnel(sshAddress, sshUser, sshPassword)
+func (proxy *SSHProxy) Socks5Run(localAddress, sshAddress, sshUser, authData string, authType int) error {
+	sshConn, err := proxy.sshTunnel(sshAddress, sshUser, authData, authType)
 	if err != nil {
 		return err
 	}
@@ -69,8 +92,8 @@ func (proxy *SSHProxy) httpConnect(resWriter http.ResponseWriter, req *http.Requ
 	io.Copy(resWriter, resp.Body)
 }
 
-func (proxy *SSHProxy) HTTPRun(localAddress, sshAddress, sshUser, sshPassword string) error {
-	sshConn, err := proxy.sshTunnel(sshAddress, sshUser, sshPassword)
+func (proxy *SSHProxy) HTTPRun(localAddress, sshAddress, sshUser, authData string, authType int) error {
+	sshConn, err := proxy.sshTunnel(sshAddress, sshUser, authData, authType)
 	if err != nil {
 		return err
 	}

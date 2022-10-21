@@ -6,6 +6,7 @@ require (
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/spf13/cobra v1.6.0
 	golang.org/x/crypto v0.1.0
+	golang.org/x/term v0.1.0
 )
 
 require (
