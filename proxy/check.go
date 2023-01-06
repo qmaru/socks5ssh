@@ -27,6 +27,11 @@ func portCheck(port string) error {
 	return errors.New("wrong port range: 1-65535")
 }
 
+func RunningCheck(address string) bool {
+	_, err := net.Dial("tcp", address)
+	return err == nil
+}
+
 func AddressChecker(address string) error {
 	if strings.Contains(address, ":") {
 		addrAndPort := strings.Split(address, ":")

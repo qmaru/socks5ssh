@@ -63,7 +63,7 @@ var (
 			if protocal == "http" {
 				log.Printf("[Remote] server: %s\n", sshAddress)
 				log.Printf("[Local] %s\n", localAddress)
-				log.Printf("[State] running...")
+				log.Println("[State] running...")
 				err := tunnel.HTTPRun(listenAddr, sshAddress, sshUser, authData, authType)
 				if err != nil {
 					log.Fatal(err)
@@ -71,11 +71,26 @@ var (
 			} else {
 				log.Printf("[Remote] server: %s\n", sshAddress)
 				log.Printf("[Local] socks5://%s\n", localAddress)
-				log.Printf("[State] running...")
-				err := tunnel.Socks5Run(listenAddr, sshAddress, sshUser, authData, authType)
-				if err != nil {
-					log.Fatal(err)
-				}
+				log.Println("[State] connecting...")
+
+				go func() {
+					err := tunnel.Socks5Run(listenAddr, sshAddress, sshUser, authData, authType)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+
+				go func() {
+					for {
+						result := proxy.RunningCheck(listenAddr)
+						if result {
+							log.Println("[State] running...")
+							break
+						}
+					}
+				}()
+
+				select {}
 			}
 		},
 	}
