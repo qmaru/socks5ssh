@@ -22,7 +22,7 @@ var (
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
 		Short:   "Proxy Over SSH By Socks5/HTTP",
-		Version: "1.1-221021",
+		Version: "1.2-230106",
 		Run: func(cmd *cobra.Command, args []string) {
 			err := proxy.AddressChecker(sshAddress)
 			if err != nil {
