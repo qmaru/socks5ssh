@@ -1,12 +1,10 @@
 # socks5ssh
 
-forward ssh using socks5 or http.
+Use socks5 or http to connect ssh tunnel to forward data.
 
 ## Command
 
 ```shell
-Proxy Over SSH By Socks5/HTTP
-
 Usage:
   socks5ssh
 

@@ -21,7 +21,7 @@ var (
 	sshKey       string
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
-		Short:   "Proxy Over SSH By Socks5/HTTP",
+		Short:   "Use socks5 or http to connect ssh tunnel to forward data",
 		Version: "1.2-230607",
 		Run: func(cmd *cobra.Command, args []string) {
 			err := tunnel.AddressChecker(sshAddress)
@@ -114,7 +114,6 @@ func init() {
 }
 
 func Execute() {
-	rootCmd.DisableFlagsInUseLine = true
 	rootCmd.AddCommand()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
