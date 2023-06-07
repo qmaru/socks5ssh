@@ -7,7 +7,7 @@ import (
 	"strings"
 	"syscall"
 
-	"socks5ssh/proxy"
+	"socks5ssh/tunnel"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -22,16 +22,16 @@ var (
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
 		Short:   "Proxy Over SSH By Socks5/HTTP",
-		Version: "1.2-230106",
+		Version: "1.2-230607",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := proxy.AddressChecker(sshAddress)
+			err := tunnel.AddressChecker(sshAddress)
 			if err != nil {
 				log.Fatalf("%s - %s", err.Error(), sshAddress)
 			}
 
 			protocal, listenAddr := ProtocolRouter(localAddress)
 
-			err = proxy.AddressChecker(listenAddr)
+			err = tunnel.AddressChecker(listenAddr)
 			if err != nil {
 				log.Fatalf("%s - %s", err.Error(), listenAddr)
 			}
@@ -59,12 +59,18 @@ var (
 				}
 			}
 
-			tunnel := new(proxy.SSHProxy)
+			tun := new(tunnel.Tunnel)
+			tun.LocalAddress = listenAddr
+			tun.RemoteAddress = sshAddress
+			tun.RemoteUser = sshUser
+			tun.RemoteAuthData = authData
+			tun.RemoteAuthType = authType
+
 			if protocal == "http" {
 				log.Printf("[Remote] server: %s\n", sshAddress)
 				log.Printf("[Local] %s\n", localAddress)
 				log.Println("[State] running...")
-				err := tunnel.HTTPRun(listenAddr, sshAddress, sshUser, authData, authType)
+				err := tun.HTTPRun()
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -74,7 +80,7 @@ var (
 				log.Println("[State] connecting...")
 
 				go func() {
-					err := tunnel.Socks5Run(listenAddr, sshAddress, sshUser, authData, authType)
+					err := tun.Socks5Run()
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -82,7 +88,7 @@ var (
 
 				go func() {
 					for {
-						result := proxy.RunningCheck(listenAddr)
+						result := tunnel.RunningCheck(listenAddr)
 						if result {
 							log.Println("[State] running...")
 							break
