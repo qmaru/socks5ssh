@@ -22,7 +22,7 @@ var (
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
 		Short:   "Use socks5 or http to connect ssh tunnel to forward data",
-		Version: "1.2-230607",
+		Version: "1.2-231027",
 		Run: func(cmd *cobra.Command, args []string) {
 			err := tunnel.AddressChecker(sshAddress)
 			if err != nil {
