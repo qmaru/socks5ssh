@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    tags: [release]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: "stable"
+
+      - name: Build
+        run: |
+          today=$(date '+%y%m%d')
+          stage=$(echo ${GITHUB_SHA} | cut -b 1-7)
+          gover=$(go version | awk '{print $3,$4}')
+          version="$today (git-$stage) ($gover)"
+          sed -i "s#YOURVERSION#$version#g" cmd/root.go
+
+          TARGETS=(
+              "linux/arm64,socks5ssh_linux_arm64"
+              "linux/amd64,socks5ssh_linux_amd64"
+              "windows/arm64,socks5ssh_windows_arm64.exe"
+              "windows/amd64,socks5ssh_windows_amd64.exe"
+              "darwin/arm64,socks5ssh_macos_arm64"
+              "darwin/amd64,socks5ssh_macos_amd64"
+          )
+
+          for target in "${TARGETS[@]}"; do
+              main_info=($(echo $target | tr "," " "))
+              platform="${main_info[0]}"
+              output="${main_info[1]}"
+
+              go_info=($(echo $platform | tr "/" " "))
+              go_os="${go_info[0]}"
+              go_arch="${go_info[1]}"
+
+              echo "Build $platform"
+              CGO_ENABLED=0 GOOS=$go_os GOARCH=$go_arch go build -v -ldflags="-w -s" -trimpath -o $output
+          done
+      - name: Use UPX compression
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          version: latest
+          files: |
+            ./socks5ssh_linux*
+            ./socks5ssh_windows_amd64*
+          args: "--lzma --best"
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: ${{ success() }}
+        with:
+          tag_name: release
+          files: |
+            socks5ssh_linux_arm64
+            socks5ssh_linux_amd64
+            socks5ssh_windows_arm64.exe
+            socks5ssh_windows_amd64.exe
+            socks5ssh_macos_arm64
+            socks5ssh_macos_amd64
+        env:
+          GITHUB_REPOSITORY: qmaru/socks5ssh

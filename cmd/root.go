@@ -13,6 +13,8 @@ import (
 	"golang.org/x/term"
 )
 
+const VERSION = "YOURVERSION"
+
 var (
 	localAddress string
 	sshAddress   string
@@ -22,7 +24,7 @@ var (
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
 		Short:   "Use socks5 or http to connect ssh tunnel to forward data",
-		Version: "1.2-231027",
+		Version: VERSION,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := tunnel.AddressChecker(sshAddress)
 			if err != nil {
