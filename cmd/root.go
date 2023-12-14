@@ -21,6 +21,7 @@ var (
 	sshUser      string
 	sshPass      bool
 	sshKey       string
+	dns          string
 	rootCmd      = &cobra.Command{
 		Use:     "socks5ssh",
 		Short:   "Use socks5 or http to connect ssh tunnel to forward data",
@@ -67,6 +68,7 @@ var (
 			tun.RemoteUser = sshUser
 			tun.RemoteAuthData = authData
 			tun.RemoteAuthType = authType
+			tun.DNSServer = dns
 
 			if protocal == "http" {
 				log.Printf("[Remote] server: %s\n", sshAddress)
@@ -79,6 +81,7 @@ var (
 			} else {
 				log.Printf("[Remote] server: %s\n", sshAddress)
 				log.Printf("[Local] socks5://%s\n", localAddress)
+				log.Printf("[Dns] %s\n", dns)
 				log.Println("[State] connecting...")
 
 				go func() {
@@ -110,6 +113,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&sshUser, "user", "u", "", "Remote SSH Username")
 	rootCmd.Flags().BoolVarP(&sshPass, "password", "p", false, "Remote SSH Password")
 	rootCmd.Flags().StringVarP(&sshKey, "key", "k", "", "Remote SSH Private Key")
+	rootCmd.Flags().StringVarP(&dns, "dns", "d", "8.8.8.8", `DNS Resolver [tcp,udp,dot]`)
 	rootCmd.MarkFlagRequired("local")
 	rootCmd.MarkFlagRequired("remote")
 	rootCmd.MarkFlagRequired("user")

@@ -10,6 +10,7 @@ import (
 )
 
 type Tunnel struct {
+	DNSServer      string
 	LocalAddress   string
 	RemoteAddress  string
 	RemoteUser     string
@@ -33,7 +34,8 @@ func (tun *Tunnel) Socks5Run() error {
 	defer sshConn.Close()
 
 	s5Conf := &socks5.Config{
-		Address: tun.LocalAddress,
+		Address:   tun.LocalAddress,
+		DNSServer: tun.DNSServer,
 		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return sshConn.Dial(network, addr)
 		},
