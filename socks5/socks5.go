@@ -2,6 +2,7 @@ package socks5
 
 import (
 	"context"
+	"log"
 	"net"
 	"net/url"
 	"time"
@@ -11,24 +12,28 @@ import (
 )
 
 type Config struct {
+	Debug     bool
 	Address   string
 	Dial      func(ctx context.Context, network, addr string) (net.Conn, error)
 	DNSServer string
 }
 
 type Server struct {
+	debug  bool
 	config *Config
+}
+
+type DNSResolver struct {
+	Debug  bool
+	Server string
 }
 
 func New(conf *Config) *Server {
 	server := &Server{
+		debug:  conf.Debug,
 		config: conf,
 	}
 	return server
-}
-
-type DNSResolver struct {
-	Server string
 }
 
 func (d DNSResolver) exchange(name string) (r *dns.Msg, rtt time.Duration, err error) {
@@ -73,6 +78,9 @@ func (d DNSResolver) Resolve(ctx context.Context, name string) (context.Context,
 
 	for _, ans := range response.Answer {
 		if a, ok := ans.(*dns.A); ok {
+			if d.Debug {
+				log.Printf("[DNS] %s->%s\n", name, a.A.String())
+			}
 			return ctx, a.A, err
 		}
 	}
@@ -81,6 +89,7 @@ func (d DNSResolver) Resolve(ctx context.Context, name string) (context.Context,
 
 func (serv *Server) Run() error {
 	resolver := DNSResolver{
+		Debug:  serv.debug,
 		Server: serv.config.DNSServer,
 	}
 

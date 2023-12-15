@@ -16,6 +16,7 @@ import (
 const VERSION = "YOURVERSION"
 
 var (
+	debug        bool
 	localAddress string
 	sshAddress   string
 	sshUser      string
@@ -69,6 +70,11 @@ var (
 			tun.RemoteAuthData = authData
 			tun.RemoteAuthType = authType
 			tun.DNSServer = dns
+			tun.Debug = debug
+
+			if debug {
+				log.Printf("[Debug] %v\n", debug)
+			}
 
 			if protocal == "http" {
 				log.Printf("[Remote] server: %s\n", sshAddress)
@@ -108,6 +114,7 @@ var (
 )
 
 func init() {
+	rootCmd.Flags().BoolVar(&debug, "debug", false, "Debug mode")
 	rootCmd.Flags().StringVarP(&localAddress, "local", "l", "", "Local Socks5/HTTP Listen Address <host>:<port>")
 	rootCmd.Flags().StringVarP(&sshAddress, "remote", "r", "", "Remote SSH Address <host>:<port>")
 	rootCmd.Flags().StringVarP(&sshUser, "user", "u", "", "Remote SSH Username")

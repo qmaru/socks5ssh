@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"context"
+	"log"
 	"net"
 
 	"socks5ssh/http"
@@ -10,6 +11,7 @@ import (
 )
 
 type Tunnel struct {
+	Debug          bool
 	DNSServer      string
 	LocalAddress   string
 	RemoteAddress  string
@@ -34,9 +36,14 @@ func (tun *Tunnel) Socks5Run() error {
 	defer sshConn.Close()
 
 	s5Conf := &socks5.Config{
+		Debug:     tun.Debug,
 		Address:   tun.LocalAddress,
 		DNSServer: tun.DNSServer,
 		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if tun.Debug {
+				log.Printf("[Connect] %s -> %s\n", sshConn.LocalAddr().String(), sshConn.RemoteAddr().String())
+				log.Printf("[Connect] %s -> %s\n", sshConn.LocalAddr().String(), addr)
+			}
 			return sshConn.Dial(network, addr)
 		},
 	}
@@ -62,6 +69,10 @@ func (tun *Tunnel) HTTPRun() error {
 	httpConf := &http.Config{
 		Address: tun.LocalAddress,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if tun.Debug {
+				log.Printf("[Connect] %s -> %s\n", sshConn.LocalAddr().String(), sshConn.RemoteAddr().String())
+				log.Printf("[Connect] %s -> %s\n", sshConn.LocalAddr().String(), addr)
+			}
 			return sshConn.Dial(network, addr)
 		},
 	}
