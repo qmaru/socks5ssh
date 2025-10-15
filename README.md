@@ -1,6 +1,6 @@
 # socks5ssh
 
-Use socks5 or http to connect ssh tunnel to forward data.
+`socks5ssh` allows you to forward data through an SSH tunnel using SOCKS5 or HTTP proxy.
 
 ## Command
 
@@ -25,7 +25,7 @@ Flags:
 
 ## Usage
 
-### socks5
+### As a SOCKS5 Proxy
 
 ```shell
 # password
@@ -35,7 +35,7 @@ socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
 socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
 ```
 
-### http
+### As an HTTP Proxy
 
 ```shell
 # password
@@ -45,19 +45,15 @@ socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
 socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
 ```
 
-## Case
+## Use Cases
+
+### Binary
 
 ```shell
-# Linux
-socks5ssh -l 127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
-
-export http_proxy="socks5://127.0.0.1:1080"
-export https_proxy="socks5://127.0.0.1:1080"
-
-curl ip.sb
+socks5ssh -l 127.0.0.1:1080 -r remote.example.com:22 -u root -p --debug
 ```
 
-## Docker
+### Docker
 
 ```shell
 # host
@@ -65,4 +61,21 @@ docker run --rm --net=host -e SSH_PASSWORD='123456' ghcr.io/qmaru/socks5ssh -r r
 
 # nat
 docker run --rm -p 1080:1080 -e SSH_PASSWORD='123456' ghcr.io/qmaru/socks5ssh -r remote.example.com:22 -l 0.0.0.0:1080 -u root -p --debug
+```
+
+### Apple [Container](https://github.com/apple/container)
+
+```shell
+# nat
+container run --rm -p 1080:1080 -e SSH_PASSWORD='123456' ghcr.io/qmaru/socks5ssh -r remote.example.com:22 -l 0.0.0.0:1080 -u root -p --debug
+```
+
+#### System Proxy Example
+
+```shell
+# Linux
+export http_proxy="socks5://127.0.0.1:1080"
+export https_proxy="socks5://127.0.0.1:1080"
+
+curl ip.sb
 ```
