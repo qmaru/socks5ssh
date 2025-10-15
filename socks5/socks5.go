@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"sync"
 	"time"
 
 	socks5 "github.com/armon/go-socks5"
@@ -23,9 +24,15 @@ type Server struct {
 	config *Config
 }
 
+type dnsCache struct {
+	ip        net.IP
+	expiresAt time.Time
+}
+
 type DNSResolver struct {
 	Debug  bool
 	Server string
+	cache  sync.Map
 }
 
 func New(conf *Config) *Server {
@@ -36,7 +43,7 @@ func New(conf *Config) *Server {
 	return server
 }
 
-func (d DNSResolver) exchange(name string) (r *dns.Msg, rtt time.Duration, err error) {
+func (d *DNSResolver) exchange(name string) (r *dns.Msg, rtt time.Duration, err error) {
 	u, err := url.Parse(d.Server)
 	if err != nil {
 		return nil, 0, err
@@ -66,7 +73,18 @@ func (d DNSResolver) exchange(name string) (r *dns.Msg, rtt time.Duration, err e
 	return client.Exchange(msg, server)
 }
 
-func (d DNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+func (d *DNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+	if cached, ok := d.cache.Load(name); ok {
+		entry := cached.(dnsCache)
+		if time.Now().Before(entry.expiresAt) {
+			if d.Debug {
+				log.Printf("[DNS Cache] %s -> %s\n", name, entry.ip.String())
+			}
+			return ctx, entry.ip, nil
+		}
+		d.cache.Delete(name)
+	}
+
 	response, _, err := d.exchange(name)
 	if err != nil {
 		return ctx, nil, err
@@ -78,17 +96,27 @@ func (d DNSResolver) Resolve(ctx context.Context, name string) (context.Context,
 
 	for _, ans := range response.Answer {
 		if a, ok := ans.(*dns.A); ok {
-			if d.Debug {
-				log.Printf("[DNS] %s->%s\n", name, a.A.String())
+			ttl := time.Duration(a.Hdr.Ttl) * time.Second
+			if ttl < 60*time.Second {
+				ttl = 60 * time.Second
 			}
-			return ctx, a.A, err
+
+			d.cache.Store(name, dnsCache{
+				ip:        a.A,
+				expiresAt: time.Now().Add(ttl),
+			})
+
+			if d.Debug {
+				log.Printf("[DNS] %s -> %s (TTL: %ds)\n", name, a.A.String(), a.Hdr.Ttl)
+			}
+			return ctx, a.A, nil
 		}
 	}
 	return ctx, nil, nil
 }
 
 func (serv *Server) Run() error {
-	resolver := DNSResolver{
+	resolver := &DNSResolver{
 		Debug:  serv.debug,
 		Server: serv.config.DNSServer,
 	}

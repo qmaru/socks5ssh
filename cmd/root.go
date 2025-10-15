@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -78,6 +79,18 @@ var (
 			tun.RemoteAuthType = authType
 			tun.DNSServer = dns
 			tun.Debug = debug
+
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+			go func() {
+				<-sigChan
+				log.Println("\n[State] shutting down...")
+				if err := tun.Close(); err != nil {
+					log.Printf("[Error] close tunnel: %v\n", err)
+				}
+				os.Exit(0)
+			}()
 
 			if debug {
 				log.Printf("[Debug] %v\n", debug)

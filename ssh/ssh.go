@@ -3,6 +3,7 @@ package ssh
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -20,7 +21,10 @@ type Config struct {
 }
 
 type Client struct {
-	config *Config
+	config    *Config
+	client    *ssh.Client
+	mu        sync.Mutex
+	lastCheck time.Time
 }
 
 func New(conf *Config) *Client {
@@ -36,6 +40,28 @@ func New(conf *Config) *Client {
 
 // Client Create a ssh client
 func (client *Client) Connect() (*ssh.Client, error) {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+
+	if client.client != nil {
+		if time.Since(client.lastCheck) < 10*time.Second {
+			return client.client, nil
+		}
+
+		_, _, err := client.client.SendRequest("keepalive@openssh.com", true, nil)
+		if err == nil {
+			client.lastCheck = time.Now()
+			return client.client, nil
+		}
+
+		client.client.Close()
+		client.client = nil
+	}
+
+	return client.createConnection()
+}
+
+func (client *Client) createConnection() (*ssh.Client, error) {
 	conf := &ssh.ClientConfig{
 		Timeout:         time.Duration(client.config.Timeout) * time.Second,
 		User:            client.config.User,
@@ -68,16 +94,41 @@ func (client *Client) Connect() (*ssh.Client, error) {
 		return nil, err
 	}
 
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			_, _, err := sshClient.SendRequest("keepalive@openssh.com", true, nil)
-			if err != nil {
-				return
-			}
-		}
-	}()
+	go client.keepAlive(sshClient)
+
+	client.client = sshClient
+	client.lastCheck = time.Now()
 
 	return sshClient, nil
+}
+
+func (client *Client) keepAlive(sshClient *ssh.Client) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		client.mu.Lock()
+		if client.client != sshClient {
+			client.mu.Unlock()
+			return
+		}
+		client.mu.Unlock()
+
+		_, _, err := sshClient.SendRequest("keepalive@openssh.com", true, nil)
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (client *Client) Close() error {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+
+	if client.client != nil {
+		err := client.client.Close()
+		client.client = nil
+		return err
+	}
+	return nil
 }
