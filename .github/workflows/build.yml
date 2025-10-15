@@ -10,15 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  build-binary:
+    name: binary
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go 1.x
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "stable"
 
@@ -74,3 +74,32 @@ jobs:
             socks5ssh_macos_amd64
         env:
           GITHUB_REPOSITORY: qmaru/socks5ssh
+
+  build-container:
+    name: container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Github Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/socks5ssh:latest

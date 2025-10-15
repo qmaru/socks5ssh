@@ -52,19 +52,31 @@ var (
 				log.Println("[Method] Private Key")
 			} else {
 				if sshPass {
-					fmt.Printf("Enter password: ")
-					password, err := term.ReadPassword(int(syscall.Stdin))
-					if err != nil {
-						log.Fatal(err)
+					var password []byte
+					var err error
+
+					if term.IsTerminal(int(syscall.Stdin)) {
+						fmt.Printf("Enter password: ")
+						password, err = term.ReadPassword(int(syscall.Stdin))
+						if err != nil {
+							log.Fatal(err)
+						}
+						fmt.Println("")
+					} else {
+						envPassword := os.Getenv("SSH_PASSWORD")
+						if envPassword == "" {
+							log.Fatal("password is required: use interactive terminal or set SSH_PASSWORD environment variable")
+						}
+						password = []byte(envPassword)
+						log.Println("[Info] using password from environment variable")
 					}
-					fmt.Println("")
+
 					if len(password) == 0 {
 						log.Fatal("password cannot be empty")
 					}
 
 					authData = string(password)
 					authType = 2
-					fmt.Println("")
 					log.Println("[Method] Password")
 				} else {
 					log.Fatal("auth method is required (-p or -k)")
