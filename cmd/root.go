@@ -35,7 +35,7 @@ var (
 				log.Fatalf("%s - %s", err.Error(), sshAddress)
 			}
 
-			protocal, listenAddr := ProtocolRouter(localAddress)
+			protocol, listenAddr := ProtocolRouter(localAddress)
 
 			err = tunnel.AddressChecker(listenAddr)
 			if err != nil {
@@ -56,6 +56,11 @@ var (
 					if err != nil {
 						log.Fatal(err)
 					}
+					fmt.Println("")
+					if len(password) == 0 {
+						log.Fatal("password cannot be empty")
+					}
+
 					authData = string(password)
 					authType = 2
 					fmt.Println("")
@@ -78,24 +83,27 @@ var (
 				log.Printf("[Debug] %v\n", debug)
 			}
 
-			if protocal == "http" {
+			switch protocol {
+			case "http":
 				log.Printf("[Remote] server: %s\n", sshAddress)
-				log.Printf("[Local] %s\n", localAddress)
+				log.Printf("[Local] http://%s\n", listenAddr)
 				log.Println("[State] running...")
 				err := tun.HTTPRun()
 				if err != nil {
 					log.Fatal(err)
 				}
-			} else {
+			default:
 				log.Printf("[Remote] server: %s\n", sshAddress)
-				log.Printf("[Local] socks5://%s\n", localAddress)
+				log.Printf("[Local] socks5://%s\n", listenAddr)
 				log.Printf("[Dns] %s\n", dns)
 				log.Println("[State] connecting...")
+
+				errChan := make(chan error, 1)
 
 				go func() {
 					err := tun.Socks5Run()
 					if err != nil {
-						log.Fatal(err)
+						errChan <- err
 					}
 				}()
 
@@ -103,14 +111,26 @@ var (
 					ticker := time.NewTicker(100 * time.Millisecond)
 					defer ticker.Stop()
 
-					for range ticker.C {
-						result := tunnel.RunningCheck(listenAddr)
-						if result {
-							log.Println("[State] running...")
+					timeout := time.After(30 * time.Second)
+
+					for {
+						select {
+						case <-ticker.C:
+							result := tunnel.RunningCheck(listenAddr)
+							if result {
+								log.Println("[State] running...")
+								return
+							}
+						case <-timeout:
+							log.Println("[Warning] connection check timeout")
 							return
 						}
 					}
 				}()
+
+				if err := <-errChan; err != nil {
+					log.Fatal(err)
+				}
 
 				select {}
 			}
@@ -132,7 +152,6 @@ func init() {
 }
 
 func Execute() {
-	rootCmd.AddCommand()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -140,14 +159,21 @@ func Execute() {
 }
 
 func ProtocolRouter(localAddress string) (string, string) {
-	var protocal string
+	var protocol string
 	var listenAddr string
-	if strings.Contains(localAddress, "http://") {
-		protocal = "http"
-		listenAddr = strings.ReplaceAll(localAddress, "http://", "")
+
+	localAddress = strings.TrimSpace(localAddress)
+
+	if strings.HasPrefix(localAddress, "http://") {
+		protocol = "http"
+		listenAddr = strings.TrimPrefix(localAddress, "http://")
+	} else if strings.HasPrefix(localAddress, "socks5://") {
+		protocol = "socks5"
+		listenAddr = strings.TrimPrefix(localAddress, "socks5://")
 	} else {
-		protocal = "socks5"
+		protocol = "socks5"
 		listenAddr = localAddress
 	}
-	return protocal, listenAddr
+
+	return protocol, listenAddr
 }
