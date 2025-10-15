@@ -5,8 +5,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
+
+var bufferPool = sync.Pool{
+	New: func() any {
+		buf := make([]byte, 32*1024)
+		return &buf
+	},
+}
 
 type Config struct {
 	Address      string
@@ -17,6 +25,12 @@ type Config struct {
 
 type Server struct {
 	config *Config
+}
+
+func copyWithBuffer(dst io.Writer, src io.Reader) {
+	bufPtr := bufferPool.Get().(*[]byte)
+	defer bufferPool.Put(bufPtr)
+	io.CopyBuffer(dst, src, *bufPtr)
 }
 
 func New(conf *Config) *Server {
@@ -49,7 +63,7 @@ func (serv *Server) httpConnect(resWriter http.ResponseWriter, req *http.Request
 	}
 
 	resWriter.WriteHeader(resp.StatusCode)
-	io.Copy(resWriter, resp.Body)
+	copyWithBuffer(resWriter, resp.Body)
 }
 
 func (serv *Server) Run() error {

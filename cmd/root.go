@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"socks5ssh/tunnel"
 
@@ -27,6 +28,7 @@ var (
 		Use:     "socks5ssh",
 		Short:   "Use socks5 or http to connect ssh tunnel to forward data",
 		Version: VERSION,
+		Example: "socks5ssh -r remote.example.com:22 -l 127.0.0.1:1080 -u root -p",
 		Run: func(cmd *cobra.Command, args []string) {
 			err := tunnel.AddressChecker(sshAddress)
 			if err != nil {
@@ -98,11 +100,14 @@ var (
 				}()
 
 				go func() {
-					for {
+					ticker := time.NewTicker(100 * time.Millisecond)
+					defer ticker.Stop()
+
+					for range ticker.C {
 						result := tunnel.RunningCheck(listenAddr)
 						if result {
 							log.Println("[State] running...")
-							break
+							return
 						}
 					}
 				}()

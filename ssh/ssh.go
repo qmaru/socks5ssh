@@ -42,7 +42,8 @@ func (client *Client) Connect() (*ssh.Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	if client.config.AuthType == 1 {
+	switch client.config.AuthType {
+	case 1:
 		key, err := os.ReadFile(client.config.AuthData)
 		if err != nil {
 			return nil, err
@@ -54,11 +55,11 @@ func (client *Client) Connect() (*ssh.Client, error) {
 		conf.Auth = []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		}
-	} else if client.config.AuthType == 2 {
+	case 2:
 		conf.Auth = []ssh.AuthMethod{
 			ssh.Password(client.config.AuthData),
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("auth type error")
 	}
 
@@ -66,5 +67,17 @@ func (client *Client) Connect() (*ssh.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			_, _, err := sshClient.SendRequest("keepalive@openssh.com", true, nil)
+			if err != nil {
+				return
+			}
+		}
+	}()
+
 	return sshClient, nil
 }
