@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -18,13 +19,13 @@ type Config struct {
 	AuthData string
 	AuthType int
 	Timeout  int
+	Debug    bool
 }
 
 type Client struct {
-	config    *Config
-	client    *ssh.Client
-	mu        sync.Mutex
-	lastCheck time.Time
+	config *Config
+	client *ssh.Client
+	mu     sync.Mutex
 }
 
 func New(conf *Config) *Client {
@@ -44,21 +45,23 @@ func (client *Client) Connect() (*ssh.Client, error) {
 	defer client.mu.Unlock()
 
 	if client.client != nil {
-		if time.Since(client.lastCheck) < 10*time.Second {
-			return client.client, nil
-		}
-
-		_, _, err := client.client.SendRequest("keepalive@openssh.com", true, nil)
-		if err == nil {
-			client.lastCheck = time.Now()
-			return client.client, nil
-		}
-
-		client.client.Close()
-		client.client = nil
+		return client.client, nil
 	}
 
-	return client.createConnection()
+	if client.config.Debug {
+		log.Printf("[SSH] connecting user=%s server=%s\n", client.config.User, client.config.Address)
+	}
+	sshClient, err := client.createConnection()
+	if err != nil {
+		if client.config.Debug {
+			log.Printf("[SSH] connect failed server=%s error=%v\n", client.config.Address, err)
+		}
+		return nil, err
+	}
+	if client.config.Debug {
+		log.Printf("[SSH] connected server=%s\n", client.config.Address)
+	}
+	return sshClient, nil
 }
 
 func (client *Client) createConnection() (*ssh.Client, error) {
@@ -94,10 +97,8 @@ func (client *Client) createConnection() (*ssh.Client, error) {
 		return nil, err
 	}
 
-	go client.keepAlive(sshClient)
-
 	client.client = sshClient
-	client.lastCheck = time.Now()
+	go client.keepAlive(sshClient)
 
 	return sshClient, nil
 }
@@ -116,6 +117,15 @@ func (client *Client) keepAlive(sshClient *ssh.Client) {
 
 		_, _, err := sshClient.SendRequest("keepalive@openssh.com", true, nil)
 		if err != nil {
+			if client.config.Debug {
+				log.Printf("[SSH] keepalive failed server=%s error=%v\n", client.config.Address, err)
+			}
+			client.mu.Lock()
+			if client.client == sshClient {
+				client.client = nil
+			}
+			client.mu.Unlock()
+			_ = sshClient.Close()
 			return
 		}
 	}

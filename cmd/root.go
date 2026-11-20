@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"socks5ssh/tunnel"
 
@@ -108,56 +107,39 @@ var (
 				log.Printf("[Debug] %v\n", debug)
 			}
 
+			ready := make(chan struct{})
+			errChan := make(chan error, 1)
+
 			switch protocol {
 			case "http":
 				log.Printf("[Remote] server: %s\n", sshAddress)
 				log.Printf("[Local] http://%s\n", listenAddr)
-				log.Println("[State] running...")
-				err := tun.HTTPRun()
-				if err != nil {
-					log.Fatal(err)
-				}
+				log.Println("[State] connecting...")
+				go func() {
+					errChan <- tun.HTTPRun(ready)
+				}()
 			default:
 				log.Printf("[Remote] server: %s\n", sshAddress)
 				log.Printf("[Local] socks5://%s\n", listenAddr)
 				log.Printf("[Dns] %s\n", dns)
 				log.Println("[State] connecting...")
-
-				errChan := make(chan error, 1)
-
 				go func() {
-					err := tun.Socks5Run()
-					if err != nil {
-						errChan <- err
-					}
+					errChan <- tun.Socks5Run(ready)
 				}()
+			}
 
-				go func() {
-					ticker := time.NewTicker(100 * time.Millisecond)
-					defer ticker.Stop()
-
-					timeout := time.After(30 * time.Second)
-
-					for {
-						select {
-						case <-ticker.C:
-							result := tunnel.RunningCheck(listenAddr)
-							if result {
-								log.Println("[State] running...")
-								return
-							}
-						case <-timeout:
-							log.Println("[Warning] connection check timeout")
-							return
-						}
-					}
-				}()
-
-				if err := <-errChan; err != nil {
+			select {
+			case <-ready:
+				log.Println("[State] running...")
+			case err := <-errChan:
+				if err != nil {
 					log.Fatal(err)
 				}
+				return
+			}
 
-				select {}
+			if err := <-errChan; err != nil {
+				log.Fatal(err)
 			}
 		},
 	}
@@ -165,13 +147,12 @@ var (
 
 func init() {
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Debug mode")
-	rootCmd.Flags().StringVarP(&localAddress, "local", "l", "", "Local Socks5/HTTP Listen Address <host>:<port>")
+	rootCmd.Flags().StringVarP(&localAddress, "local", "l", "127.0.0.1:18080", "Local Socks5/HTTP Listen Address <host>:<port>")
 	rootCmd.Flags().StringVarP(&sshAddress, "remote", "r", "", "Remote SSH Address <host>:<port>")
 	rootCmd.Flags().StringVarP(&sshUser, "user", "u", "", "Remote SSH Username")
 	rootCmd.Flags().BoolVarP(&sshPass, "password", "p", false, "Remote SSH Password")
 	rootCmd.Flags().StringVarP(&sshKey, "key", "k", "", "Remote SSH Private Key")
-	rootCmd.Flags().StringVarP(&dns, "dns", "d", "8.8.8.8", `DNS Resolver [tcp,udp,dot]`)
-	rootCmd.MarkFlagRequired("local")
+	rootCmd.Flags().StringVarP(&dns, "dns", "d", "local", `DNS Resolver [local,tcp,udp,dot]`)
 	rootCmd.MarkFlagRequired("remote")
 	rootCmd.MarkFlagRequired("user")
 }

@@ -13,10 +13,10 @@ socks5ssh -r remote.example.com:22 -l 127.0.0.1:1080 -u root -p
 
 Flags:
       --debug           Debug mode
-  -d, --dns string      DNS Resolver [tcp,udp,dot] (default "8.8.8.8")
+  -d, --dns string      DNS Resolver [local,tcp,udp,dot] (default "local")
   -h, --help            help for socks5ssh
   -k, --key string      Remote SSH Private Key
-  -l, --local string    Local Socks5/HTTP Listen Address <host>:<port>
+  -l, --local string    Local Socks5/HTTP Listen Address <host>:<port> (default "127.0.0.1:18080")
   -p, --password        Remote SSH Password
   -r, --remote string   Remote SSH Address <host>:<port>
   -u, --user string     Remote SSH Username
@@ -44,6 +44,10 @@ socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -p
 # key
 socks5ssh -l http://127.0.0.1:1080 -r ssh_server:ssh_port -u ssh_user -k ~/.ssh/id_rsa
 ```
+
+The HTTP proxy accepts HTTP/1.1 and cleartext HTTP/2, including HTTP CONNECT for HTTPS tunneling.
+
+Use `--debug` to show SSH connection state, DNS source and result, target/resolved address, and connection errors without logging payload data.
 
 ## Use Cases
 
